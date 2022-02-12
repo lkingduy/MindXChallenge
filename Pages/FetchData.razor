@@ -1,46 +1,107 @@
 ﻿@page "/fetchdata"
-
 @using MindXChallenge.Data
+@using MindXChallenge.Data.Models
 @inject WeatherForecastService ForecastService
+@using System.Text.Json;
+@using AntDesign.TableModels;
+@using System.ComponentModel.DataAnnotations;
+@using System.Security.Claims
+@using Microsoft.AspNetCore.Components.Authorization
+@inject AuthenticationStateProvider AuthenticationStateProvider
 
-<h1>Weather forecast</h1>
-
-<p>This component demonstrates fetching data from a service.</p>
-
-@if (forecasts == null)
+@if (blogs == null || !blogs.Any())
 {
     <p><em>Loading...</em></p>
 }
 else
 {
-    <table class="table">
-        <thead>
-            <tr>
-                <th>Date</th>
-                <th>Temp. (C)</th>
-                <th>Temp. (F)</th>
-                <th>Summary</th>
-            </tr>
-        </thead>
-        <tbody>
-            @foreach (var forecast in forecasts)
-            {
-                <tr>
-                    <td>@forecast.Date.ToShortDateString()</td>
-                    <td>@forecast.TemperatureC</td>
-                    <td>@forecast.TemperatureF</td>
-                    <td>@forecast.Summary</td>
-                </tr>
-            }
-        </tbody>
-    </table>
+    <Table DataSource="blogs" OnChange="OnChange" TItem="Blog">
+        <Column TData="string"
+                @bind-Field="context.Name"
+                SorterCompare="@((a,b)=> a.Length - b.Length)"
+                SortDirections="new[] { SortDirection.Descending }" />
+        <Column TData="string"
+                DataIndex="@nameof(context.Contents)"
+                DefaultSortOrder="@SortDirection.Descending"
+                SorterCompare="@((a,b)=> a.Length - b.Length)" />
+        <Column TData="string"
+                @bind-Field="context.UpdYmd"
+                SorterCompare="@((a,b)=> a.Length - b.Length)"
+                SortDirections="new[] { SortDirection.Descending, SortDirection.Ascending }" />
+    </Table>
 }
 
+<Form Model="@blogData"
+      LabelColSpan="8"
+      WrapperColSpan="16"
+      OnFinish="OnFinish"
+      OnFinishFailed="OnFinishFailed">
+    <FormItem Label="Input">
+        <Input @bind-Value="@context.Name" />
+    </FormItem>
+    <FormItem Label="InputArea">
+        <TextArea @bind-Value="@context.Contents" />
+    </FormItem>
+    <FormItem Label="DatePicker">
+        <DatePicker @bind-Value="@context.Time" />
+    </FormItem>
+    <FormItem WrapperColOffset="8" WrapperColSpan="16">
+        <Button HtmlType="submit">
+            Submit
+        </Button>
+    </FormItem>
+</Form>
+
+
+
 @code {
-    private WeatherForecast[] forecasts;
+    private Blog[] blogs;
+
+    private BlogData blogData = new BlogData();
+    private string _authMessage;
+    private string _surnameMessage;
+    private IEnumerable<Claim> _claims = Enumerable.Empty<Claim>();
+    private ClaimsPrincipal user;
+    private string userId;
 
     protected override async Task OnInitializedAsync()
     {
-        forecasts = await ForecastService.GetForecastAsync(DateTime.Now);
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        user = authState.User;
+
+        if (user.Identity.IsAuthenticated)
+        {
+            _authMessage = $"{user.Identity.Name} is authenticated.";
+            _claims = user.Claims;
+            _surnameMessage =
+                $"Surname: {user.FindFirst(c => c.Type == ClaimTypes.Surname)?.Value}";
+            userId = _claims.FirstOrDefault().Value;
+        }
+        else
+        {
+            _authMessage = "The user is NOT authenticated.";
+        }
+        blogs = await ForecastService.GetForecastAsync(userId);
+    }
+
+    void OnChange(QueryModel<Blog> query)
+    {
+        //Console.WriteLine(JsonSerializer.Serialize(query));
+    }
+
+    void OnRowClick(RowData<Blog> row)
+    {
+        Console.WriteLine($"row {row.Data.Name} was clicked");
+    }
+
+    private void OnFinish(EditContext editContext)
+    {
+        blogData.UserId = userId;
+        ForecastService.CreateBlog(blogData);
+    }
+
+    private void OnFinishFailed(EditContext editContext)
+    {
+
     }
 }
