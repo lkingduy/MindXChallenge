@@ -14,10 +14,16 @@ namespace MindXChallenge.Data
             "Freezing", "Bracing", "Chilly", "Cool", "Mild", "Warm", "Balmy", "Hot", "Sweltering", "Scorching"
         };
 
-        public Task<Blog[]> GetForecastAsync(string userId)
+        public Task<Blog[]> GetUserBlogs(string userId)
         {
             MindxdbContext context = new MindxdbContext();
             return context.Blog.Where(x => x.UserId == userId).ToArrayAsync();
+        }
+
+        public Task<Blog[]> GetBlogs()
+        {
+            MindxdbContext context = new MindxdbContext();
+            return context.Blog.ToArrayAsync();
         }
 
         public bool CreateBlog(BlogData blogData)

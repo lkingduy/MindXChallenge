@@ -1,4 +1,5 @@
-﻿@page "/fetchdata"
+﻿@page "/blog"
+@attribute [Authorize]
 @using MindXChallenge.Data
 @using MindXChallenge.Data.Models
 @inject WeatherForecastService ForecastService
@@ -9,13 +10,33 @@
 @using Microsoft.AspNetCore.Components.Authorization
 @inject AuthenticationStateProvider AuthenticationStateProvider
 
-@if (blogs == null || !blogs.Any())
-{
-    <p><em>Loading...</em></p>
-}
-else
-{
-    <Table DataSource="blogs" OnChange="OnChange" TItem="Blog">
+<Breadcrumb Style="margin: 16px 0;">
+    <BreadcrumbItem>Home</BreadcrumbItem>
+    <BreadcrumbItem>Blog</BreadcrumbItem>
+</Breadcrumb>
+
+<Tabs @bind-ActiveKey="@activeKey" OnChange="OnTabChange" Animated>
+    <TabPane Tab="Global" Key="1">
+        @foreach (var item in globalBlogs)
+        {
+            <Comment Actions="@(new []{likeAction,dislikeAction,replyAction})"
+                     Author="@(item.UserName)"
+                     Avatar="https://zos.alipayobjects.com/rmsportal/ODTLcjxAfvqbxHnVXCYX.png"
+                     Content="@(item.Contents)"
+                     Datetime="@(item.TimeString)">
+            </Comment>
+        }
+    </TabPane>
+    <TabPane Tab="Tab 2" Key="2">
+        <Comment Actions="@(new []{likeAction,dislikeAction,replyAction})"
+                 Author="Han Solo"
+                 Avatar="https://zos.alipayobjects.com/rmsportal/ODTLcjxAfvqbxHnVXCYX.png"
+                 Content="We supply a series of design principles, practical patterns and high quality design resources (Sketch and Axure), to help people create their product prototypes beautifully and efficiently."
+                 Datetime="dateTime">
+        </Comment>
+    </TabPane>
+</Tabs>
+@*<Table DataSource="blogs" OnChange="OnChange" TItem="Blog">
         <Column TData="string"
                 @bind-Field="context.Name"
                 SorterCompare="@((a,b)=> a.Length - b.Length)"
@@ -28,38 +49,15 @@ else
                 @bind-Field="context.UpdYmd"
                 SorterCompare="@((a,b)=> a.Length - b.Length)"
                 SortDirections="new[] { SortDirection.Descending, SortDirection.Ascending }" />
-    </Table>
-}
+    </Table>*@
 
-<Form Model="@blogData"
-      LabelColSpan="8"
-      WrapperColSpan="16"
-      OnFinish="OnFinish"
-      OnFinishFailed="OnFinishFailed">
-    <FormItem Label="Input">
-        <Input @bind-Value="@context.Name" />
-    </FormItem>
-    <FormItem Label="InputArea">
-        <TextArea @bind-Value="@context.Contents" />
-    </FormItem>
-    <FormItem Label="DatePicker">
-        <DatePicker @bind-Value="@context.Time" />
-    </FormItem>
-    <FormItem WrapperColOffset="8" WrapperColSpan="16">
-        <Button HtmlType="submit">
-            Submit
-        </Button>
-    </FormItem>
-</Form>
 
 
 
 @code {
     private Blog[] blogs;
-
-    private BlogData blogData = new BlogData();
-    private string _authMessage;
-    private string _surnameMessage;
+    private List<BlogData> globalBlogs = new List<BlogData>();
+    string activeKey { get; set; } = "1";
     private IEnumerable<Claim> _claims = Enumerable.Empty<Claim>();
     private ClaimsPrincipal user;
     private string userId;
@@ -71,17 +69,21 @@ else
 
         if (user.Identity.IsAuthenticated)
         {
-            _authMessage = $"{user.Identity.Name} is authenticated.";
             _claims = user.Claims;
-            _surnameMessage =
-                $"Surname: {user.FindFirst(c => c.Type == ClaimTypes.Surname)?.Value}";
             userId = _claims.FirstOrDefault().Value;
         }
-        else
+        var datas = await ForecastService.GetBlogs();
+        foreach (var item in datas)
         {
-            _authMessage = "The user is NOT authenticated.";
+            var blog = new BlogData()
+            {
+                Name = item.Name,
+                Contents = item.Contents,
+                TimeString = item.UpdYmd.Insert(4, "/").Insert(7, "/").ToString() + " " + item.UpdHms.Insert(2, ":").ToString(),
+                UserName = user.Identity.Name
+            };
+            globalBlogs.Add(blog);
         }
-        blogs = await ForecastService.GetForecastAsync(userId);
     }
 
     void OnChange(QueryModel<Blog> query)
@@ -94,14 +96,48 @@ else
         Console.WriteLine($"row {row.Data.Name} was clicked");
     }
 
-    private void OnFinish(EditContext editContext)
+    void OnTabChange(string key)
     {
-        blogData.UserId = userId;
-        ForecastService.CreateBlog(blogData);
+        Console.WriteLine($"tab change:{key}");
     }
 
-    private void OnFinishFailed(EditContext editContext)
-    {
+    bool like = false;
+    bool dislike = false;
 
-    }
+    RenderFragment likeAction =>
+    @<span>
+        <Tooltip Title="@("Like")">
+            <Icon Type="like" Theme="@(like ? "fill" : "outline")" OnClick="SetLike" />
+        </Tooltip>
+        <span>@(like ? 1 : 0)</span>
+    </span>;
+
+RenderFragment dislikeAction =>
+@<span>
+    <Tooltip Title="@("Dislike")">
+        <Icon Type="dislike" Theme="@(dislike ? "fill" : "outline")" OnClick="SetDislike" />
+    </Tooltip>
+    <span>@(dislike ? 1:0)</span>
+</span>;
+
+RenderFragment replyAction =@<span>Reply to</span>;
+
+RenderFragment dateTime =
+@<Tooltip Title="@(DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"))">
+    <span>
+        @(MomentHelper.FromNow(DateTime.Now))
+    </span>
+</Tooltip>;
+
+void SetLike()
+{
+like = true;
+dislike = false;
+}
+
+void SetDislike()
+{
+like = false;
+dislike = true;
+}
 }
