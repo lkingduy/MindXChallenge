@@ -1,7 +1,109 @@
 ﻿@page "/"
+@attribute [Authorize]
+@using MindXChallenge.Data
+@using MindXChallenge.Data.Models
+@inject WeatherForecastService ForecastService
+@using System.Text.Json;
+@using AntDesign.TableModels;
+@using System.ComponentModel.DataAnnotations;
+@using System.Security.Claims
+@using Microsoft.AspNetCore.Components.Authorization
+@inject AuthenticationStateProvider AuthenticationStateProvider
 
-<h1>Hello, world!</h1>
+<Breadcrumb Style="margin: 16px 0;">
+    <BreadcrumbItem>Home</BreadcrumbItem>
+    <BreadcrumbItem>Blog</BreadcrumbItem>
+</Breadcrumb>
 
-Welcome to your new app.
+<Tabs @bind-ActiveKey="@activeKey" OnChange="OnTabChange" Animated>
+    <TabPane Tab="Global" Key="1">
+        @foreach (var item in globalBlogs)
+        {
+            <Comment 
+                     Author="@(item.UserName)"
+                     Avatar="https://zos.alipayobjects.com/rmsportal/ODTLcjxAfvqbxHnVXCYX.png"
+                     Content="@(item.Contents)"
+                     Datetime="@(item.TimeString)">
+            </Comment>
+            <button class="btn btn-sm btn-outline-primary" @onclick="async e => await SetLike(item.BlogId)">Like: @(item.LikeCount)</button>
+            <a href="/blog/@(item.BlogId)">Detail</a>
+        }
+    </TabPane>
+    @*<TabPane Tab="Tab 2" Key="2">
+        <Comment Actions="@(new[] { likeAction, replyAction })"
+                 Author="Han Solo"
+                 Avatar="https://zos.alipayobjects.com/rmsportal/ODTLcjxAfvqbxHnVXCYX.png"
+                 Content="We supply a series of design principles, practical patterns and high quality design resources (Sketch and Axure), to help people create their product prototypes beautifully and efficiently."
+                 Datetime="dateTime">
+        </Comment>
+    </TabPane>*@
+</Tabs>
 
-<SurveyPrompt Title="How is Blazor working for you?" />
+@code {
+    private Blog[] blogs;
+    private List<BlogData> globalBlogs = new List<BlogData>();
+    string activeKey { get; set; } = "1";
+    private IEnumerable<Claim> _claims = Enumerable.Empty<Claim>();
+    private ClaimsPrincipal user;
+    private string userId;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        user = authState.User;
+
+        if (user.Identity.IsAuthenticated)
+        {
+            _claims = user.Claims;
+            userId = _claims.FirstOrDefault().Value;
+        }
+        await InitData();
+    }
+
+    async Task InitData()
+    {
+        globalBlogs.Clear();
+        var datas = await ForecastService.GetBlogs();
+        foreach (var item in datas)
+        {
+            var blog = new BlogData()
+            {
+                Name = item.Name,
+                Contents = item.Contents,
+                TimeString = item.UpdYmd.Insert(4, "/").Insert(7, "/").ToString() + " " + item.UpdHms.Insert(2, ":").ToString(),
+                UserName = user.Identity.Name,
+                LikeCount = item.LikeCount.GetValueOrDefault(),
+                BlogId = item.Id
+            };
+            globalBlogs.Add(blog);
+        }
+    }
+
+    void OnChange(QueryModel<Blog> query)
+    {
+        //Console.WriteLine(JsonSerializer.Serialize(query));
+    }
+
+    void OnRowClick(RowData<Blog> row)
+    {
+        Console.WriteLine($"row {row.Data.Name} was clicked");
+    }
+
+    void OnTabChange(string key)
+    {
+        Console.WriteLine($"tab change:{key}");
+    }
+
+    RenderFragment dateTime =
+    @<Tooltip Title="@(DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"))">
+        <span>
+            @(MomentHelper.FromNow(DateTime.Now))
+        </span>
+    </Tooltip>;
+
+    async Task SetLike(int blogId)
+    {
+        ForecastService.SaveLikeCount(blogId);
+        await InitData();
+    }
+}

@@ -4,22 +4,15 @@ using System.Collections.Generic;
 
 namespace MindXChallenge.Data
 {
-    public partial class Blog
+    public partial class Comment
     {
-        public Blog()
-        {
-            Comment = new HashSet<Comment>();
-        }
-
         public int Id { get; set; }
-        public string Name { get; set; }
+        public int? BlogId { get; set; }
+        public string UserId { get; set; }
         public string Contents { get; set; }
         public string UpdYmd { get; set; }
         public string UpdHms { get; set; }
-        public string UserId { get; set; }
-        public string Tags { get; set; }
-        public int? LikeCount { get; set; }
 
-        public virtual ICollection<Comment> Comment { get; set; }
+        public virtual Blog Blog { get; set; }
     }
 }

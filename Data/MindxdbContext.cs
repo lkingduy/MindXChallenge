@@ -19,6 +19,8 @@ namespace MindXChallenge.Data
         }
 
         public virtual DbSet<Blog> Blog { get; set; }
+        public virtual DbSet<Comment> Comment { get; set; }
+        public virtual DbSet<Tag> Tag { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -31,6 +33,27 @@ namespace MindXChallenge.Data
                 entity.Property(e => e.UserId)
                     .IsRequired()
                     .HasMaxLength(450);
+            });
+
+            modelBuilder.Entity<Comment>(entity =>
+            {
+                entity.Property(e => e.UpdHms).HasMaxLength(6);
+
+                entity.Property(e => e.UpdYmd).HasMaxLength(8);
+
+                entity.Property(e => e.UserId).HasMaxLength(450);
+
+                entity.HasOne(d => d.Blog)
+                    .WithMany(p => p.Comment)
+                    .HasForeignKey(d => d.BlogId)
+                    .HasConstraintName("FK_Comment_Blog");
+            });
+
+            modelBuilder.Entity<Tag>(entity =>
+            {
+                entity.Property(e => e.Id).ValueGeneratedNever();
+
+                entity.Property(e => e.Name).HasMaxLength(450);
             });
 
             OnModelCreatingPartial(modelBuilder);

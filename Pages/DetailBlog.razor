@@ -1,0 +1,111 @@
+﻿@page "/blog/{id:int}"
+@attribute [Authorize]
+@using MindXChallenge.Data
+@using MindXChallenge.Data.Models
+@inject WeatherForecastService ForecastService
+@using System.Text.Json;
+@using AntDesign.TableModels;
+@using System.ComponentModel.DataAnnotations;
+@using System.Security.Claims
+@using Microsoft.AspNetCore.Components.Authorization
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject NavigationManager Nav
+
+<Breadcrumb Style="margin: 16px 0;">
+    <BreadcrumbItem>Home</BreadcrumbItem>
+    <BreadcrumbItem>Detail</BreadcrumbItem>
+</Breadcrumb>
+
+<Comment Author="@(blogData.UserName)"
+         Avatar="https://zos.alipayobjects.com/rmsportal/ODTLcjxAfvqbxHnVXCYX.png"
+         Content="@(blogData.Contents)"
+         Datetime="@(blogData.TimeString)">
+</Comment>
+
+<hr />
+<div>Comments</div>
+@foreach (var item in cmts)
+{
+    <div class="ant-comment" id="ant-blazor-0e3322b1-28a0-4840-bf9f-f22f8760ddac" _bl_1986="">
+        <!--!-->
+        <div class="ant-comment-inner">
+            <!--!-->
+            <div class="ant-comment-avatar">
+                <!--!-->
+                <!--!-->    <span class="ant-avatar" style=" " id="ant-blazor-8e7d117f-c6ce-45d9-9225-6075ac24a7bf" _bl_1988="">
+                    <!--!-->
+                </span><!--!-->
+                <!--!-->
+            </div><!--!-->
+            <div class="ant-comment-content">
+                <!--!-->
+                <div class="ant-comment-content-author">
+                    <!--!-->
+                    <span class="ant-comment-content-author-name">
+                        <!--!-->
+
+                        <a>@item.UserId</a><!--!-->
+                    </span><!--!-->
+                    <!--!-->
+                    <span class="ant-comment-content-author-time">
+                        <!--!-->
+                        <span>@(item.UpdYmd.Insert(4, "/").Insert(7, "/").ToString() + " " + item.UpdHms.Insert(2, ":").ToString())</span><!--!-->
+                    </span><!--!-->
+                </div><!--!-->
+                <div class="ant-comment-content-detail">
+                    <!--!-->
+                    <p>@item.Contents</p><!--!-->
+                </div><!--!-->
+            </div><!--!-->
+        </div><!--!-->
+        <div class="ant-comment-nested">
+            <!--!-->
+            <!--!-->
+        </div><!--!-->
+    </div>
+}
+
+<hr />
+Add comment
+<TextArea @bind-Va="cmt"></TextArea>
+<button @onclick="SaveCmt">Submit Comment</button>
+
+@code {
+    [Parameter] public int id { get; set; }
+    private IEnumerable<Claim> _claims = Enumerable.Empty<Claim>();
+    private ClaimsPrincipal user;
+    private string userId;
+    private BlogData blogData = new BlogData();
+    private List<MindXChallenge.Data.Comment> cmts = new List<MindXChallenge.Data.Comment>();
+    private string cmt { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        user = authState.User;
+
+        if (user.Identity.IsAuthenticated)
+        {
+            _claims = user.Claims;
+            userId = _claims.FirstOrDefault().Value;
+        }
+        var blog = ForecastService.GetBlog(id);
+        blogData = new BlogData()
+        {
+            Name = blog.Name,
+            Contents = blog.Contents,
+            TimeString = blog.UpdYmd.Insert(4, "/").Insert(7, "/").ToString() + " " + blog.UpdHms.Insert(2, ":").ToString(),
+            UserName = user.Identity.Name,
+            LikeCount = blog.LikeCount.GetValueOrDefault(),
+            BlogId = blog.Id
+        };
+
+        cmts = ForecastService.GetCommentByBlog(blogData.BlogId);
+    }
+
+    public void SaveCmt()
+    {
+        ForecastService.SaveComment(cmt, userId, blogData.BlogId);
+        var cmts = ForecastService.GetCommentByBlog(blogData.BlogId);
+    }
+}

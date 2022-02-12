@@ -15,6 +15,14 @@
       {
          "HasPrimaryKey": true,
          "Name": "[dbo].[Blog]"
+      },
+      {
+         "HasPrimaryKey": true,
+         "Name": "[dbo].[Comment]"
+      },
+      {
+         "HasPrimaryKey": true,
+         "Name": "[dbo].[Tag]"
       }
    ],
    "UseDatabaseNames": false,

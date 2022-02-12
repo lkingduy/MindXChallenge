@@ -26,9 +26,9 @@
             <span>MindXChallenge</span>
             <AuthorizeView>
                 <Authorized>
-                    <a href="#">Hello, @context.User.Identity.Name!</a>
-                    <MenuItem Key="1"><a href="newblog">New Post</a></MenuItem>
-                    <MenuItem Key="2"><a href="Identity/Account/LogOut">Logout</a></MenuItem>
+                    <MenuItem Key="2" Class="float-right"><a href="Identity/Account/LogOut">Logout</a></MenuItem>
+                    <MenuItem Key="1" Class="float-right"><a href="newblog">New Post</a></MenuItem>
+                    <span class="float-right">Hello, @context.User.Identity.Name!</span>
                 </Authorized>
                 <NotAuthorized>
                     <MenuItem Key="3" Class="float-right"><a href="Identity/Account/Register">Register</a></MenuItem>
